@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Crux</title>
+  <meta name="description" content="Track lifting, climbing, food, weight and steps, with Gemini estimating your macros.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Crux">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#EEF1F2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0C1112" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-text">
+      <h1 id="title">Today</h1>
+      <p id="subtitle" class="muted"></p>
+    </div>
+    <button class="icon-btn" id="settings-btn" aria-label="Settings"></button>
+  </header>
+
+  <main id="view" tabindex="-1"></main>
+
+  <nav class="tabbar" aria-label="Sections">
+    <button data-tab="today" aria-current="page"><span class="ic" data-icon="sun"></span>Today</button>
+    <button data-tab="workouts"><span class="ic" data-icon="dumbbell"></span>Workouts</button>
+    <button data-tab="food"><span class="ic" data-icon="fork"></span>Food</button>
+    <button data-tab="progress"><span class="ic" data-icon="chart"></span>Progress</button>
+    <button data-tab="coach"><span class="ic" data-icon="sparkle"></span>Coach</button>
+  </nav>
+
+  <div id="sheet-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

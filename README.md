@@ -6,7 +6,7 @@ It installs to your home screen from Safari and opens full-screen like a normal 
 
 ## Put it online with GitHub Pages
 
-1. Unzip `crux-app.zip`. You'll get a `crux-app` folder with `index.html`, `app.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, this README and an `icons` folder.
+1. Unzip `crux-app.zip`. You'll get a `crux-app` folder with `index.html` (the whole app is in this one file), `sw.js`, `manifest.webmanifest`, this README and an `icons` folder.
 2. On github.com, click **+** (top right) > **New repository**. Name it `crux-app`, choose **Public**, leave "Add a README file" unticked, and click **Create repository**. (Free GitHub accounts can only publish Pages sites from public repositories. Nothing private is in these files.)
 3. Click **uploading an existing file**. Open the `crux-app` folder, select everything inside it (including the `icons` folder) and drag it onto the page. Click **Commit changes**.
 4. Go to **Settings** > **Pages**. Under "Build and deployment", set Source to **Deploy from a branch**, Branch to **main** and folder to **/ (root)**, then click **Save**.

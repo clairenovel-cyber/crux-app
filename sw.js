@@ -1,6 +1,6 @@
 // Keeps Crux working offline. Your data lives in the app's own storage, not here;
 // this only caches the app's files. Bump VERSION when you change any file.
-const VERSION = 'crux-v2';
+const VERSION = 'crux-v3';
 const SHELL = [
   './',
   'index.html',

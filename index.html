@@ -412,7 +412,7 @@ window.addEventListener('error', e => {
 const STORE = 'crux-data-v1';
 const KEY_STORE = 'crux-gemini-key';
 const MODEL_STORE = 'crux-gemini-model';
-const DEFAULT_MODEL = 'gemini-flash-latest';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 const defaultProfile = () => ({
   sex: 'male', age: 30, heightCm: 170, startWeight: 70, targetWeight: 68,
@@ -438,7 +438,10 @@ function save() {
   catch (_) { toast("Couldn't save. Your phone's storage may be full."); }
 }
 const getKey = () => (localStorage.getItem(KEY_STORE) || '').trim();
-const getModel = () => (localStorage.getItem(MODEL_STORE) || '').trim() || DEFAULT_MODEL;
+const getModel = () => {
+  const m = (localStorage.getItem(MODEL_STORE) || '').trim();
+  return m && m !== 'gemini-flash-latest' ? m : DEFAULT_MODEL;
+};
 
 // ---------- Small helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -629,40 +632,56 @@ function workoutSummary(w) {
 }
 
 // ---------- Gemini ----------
+// Tried in order. If one is busy (503) or out of free quota (429), the next one answers.
+const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
 async function gemini(parts, system, json) {
   const key = getKey();
   if (!key) throw new Error('Add your Gemini API key in Settings first (the slider button at the top right).');
-  const models = [...new Set([getModel(), DEFAULT_MODEL, 'gemini-2.5-flash'])];
-  let lastError;
+  const models = [...new Set([getModel(), ...FALLBACK_MODELS])];
+  const body = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: { temperature: json ? 0.2 : 0.7, ...(json ? { responseMimeType: 'application/json' } : {}) },
+  };
+  if (system) body.systemInstruction = { parts: [{ text: system }] };
+  let busy = 0, quota = 0, missing = 0;
+
   for (const model of models) {
-    const body = {
-      contents: [{ role: 'user', parts }],
-      generationConfig: { temperature: json ? 0.2 : 0.7, ...(json ? { responseMimeType: 'application/json' } : {}) },
-    };
-    if (system) body.systemInstruction = { parts: [{ text: system }] };
-    let res;
-    try {
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify(body),
-      });
-    } catch (_) {
-      throw new Error("Couldn't reach Gemini. Check your internet connection and try again.");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let res;
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify(body),
+        });
+      } catch (_) {
+        throw new Error("Couldn't reach Gemini. Check your internet connection and try again.");
+      }
+      const out = await res.json().catch(() => null);
+      if (res.ok) {
+        const text = (out?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+        if (text) return text;
+        busy++; break; // empty answer: try the next model
+      }
+      const msg = out?.error?.message || res.statusText || 'Unknown error';
+      if ([500, 502, 503, 504].includes(res.status)) {
+        busy++;
+        if (attempt === 0) { await wait(1200); continue; } // one quick retry, then move on
+        break;
+      }
+      if (res.status === 429) { quota++; break; }
+      if (res.status === 404) { missing++; break; }
+      if ([400, 401, 403].includes(res.status) && /api key|permission|unauthenticated/i.test(msg)) {
+        throw new Error('Gemini rejected the API key. In Settings, paste the key again from aistudio.google.com and tap Test connection.');
+      }
+      throw new Error(`Gemini returned an error (${res.status}): ${msg}`);
     }
-    const out = await res.json().catch(() => null);
-    if (res.ok) {
-      const text = (out?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-      if (!text) throw new Error("Gemini didn't return an answer. Try again.");
-      return text;
-    }
-    const msg = out?.error?.message || res.statusText || 'Unknown error';
-    if (res.status === 404) { lastError = new Error(`Gemini model "${model}" wasn't found. Check the model name in Settings.`); continue; }
-    if (/api key/i.test(msg)) throw new Error('Gemini rejected the API key. Check it in Settings.');
-    if (res.status === 429) throw new Error("You've hit Gemini's rate limit. Wait a minute and try again.");
-    throw new Error(`Gemini returned an error (${res.status}): ${msg}`);
   }
-  throw lastError;
+  if (busy) throw new Error("Gemini's servers are busy right now. Your key is fine. Wait a minute and try again.");
+  if (quota) throw new Error("You've used up Gemini's free requests for now. Wait a minute (or until tomorrow if it keeps happening) and try again.");
+  throw new Error("None of the Gemini models answered. Clear the Model box in Settings so Crux picks one for you, then try again.");
 }
 
 function parseFoodJson(text) {
